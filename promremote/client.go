@@ -1,4 +1,4 @@
-// Copyright (c) 2018 Uber Technologies, Inc.
+// Copyright (c) 2019 Uber Technologies, Inc.
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -18,36 +18,36 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// change package name once we decide where to move
-package main
+package promremote
 
 import (
 	"bytes"
 	"fmt"
-	"log"
+	"io/ioutil"
 	"net/http"
 	"time"
 
-	"github.com/m3db/prometheus_remote_client_golang/prompb"
+	"github.com/m3db/m3/src/query/ts"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/snappy"
-	"github.com/m3db/m3/src/query/ts"
+	"github.com/prometheus/prometheus/prompb"
 )
 
 const (
-	defaultRemoteWrite      = "http://localhost:7201/api/v1/prom/remote/write"
+	// DefaultRemoteWrite is the default Prom remote write endpoint in m3coordinator.
+	DefaultRemoteWrite = "http://localhost:7201/api/v1/prom/remote/write"
+
 	defaulHTTPClientTimeout = time.Second * 30
 )
 
-// Tag are the metric tags
+// Tag are the metric tags.
 type Tag struct {
 	Name  string `json:"name"`
 	Value string `json:"value"`
 }
 
-// Timeseries are made of tags and a datapoint
-// should this be []ts.Datapoint?
+// Timeseries are made of tags and a datapoint.
 type Timeseries struct {
 	Tags      []Tag
 	Datapoint ts.Datapoint
@@ -63,35 +63,36 @@ type clientOptions struct {
 	httpClientTimeout time.Duration
 }
 
-// M3Client is used to write timeseries data to m3coordinator
+// M3Client is used to write timeseries data to m3coordinator.
 type M3Client interface {
+	// Write writes the Prom proto WriteRequest to the specified endpoint.
 	Write(*prompb.WriteRequest) error
 }
 
-// ClientOptions defines available methods
+// ClientOptions defines available methods.
 type ClientOptions interface {
-	// SetWriteURL sets the URL which the client uses to write to m3coordinator
+	// SetWriteURL sets the URL which the client uses to write to m3coordinator.
 	SetWriteURL(string) ClientOptions
 
-	// WriteURL returns the URL which the client uses to write to m3coordinator
+	// WriteURL returns the URL which the client uses to write to m3coordinator.
 	WriteURL() string
 
-	// SetHTTPClientTimeout sets the timeout for the client
+	// SetHTTPClientTimeout sets the timeout for the client.
 	SetHTTPClientTimeout(time.Duration) ClientOptions
 
-	//HTTPClientTimeout returns the timeout that is set for the client
+	//HTTPClientTimeout returns the timeout that is set for the client.
 	HTTPClientTimeout() time.Duration
 }
 
-// NewClientOpts returns a default clientOptions struct
+// NewClientOpts returns a default clientOptions struct.
 func NewClientOpts() ClientOptions {
 	return &clientOptions{
-		remoteWriteURL:    defaultRemoteWrite,
+		remoteWriteURL:    DefaultRemoteWrite,
 		httpClientTimeout: defaulHTTPClientTimeout,
 	}
 }
 
-// NewClient creates a new remote write coordinator client
+// NewClient creates a new remote write coordinator client.
 func NewClient(opts ClientOptions) M3Client {
 	return &client{
 		writeURL: opts.WriteURL(),
@@ -121,35 +122,6 @@ func (o *clientOptions) HTTPClientTimeout() time.Duration {
 	return o.httpClientTimeout
 }
 
-// remove this
-func main() {
-	tsList := []Timeseries{
-		{
-			Tags: []Tag{
-				{
-					Name:  "ben",
-					Value: "test",
-				},
-				{
-					Name:  "__name__",
-					Value: "bensmetric",
-				},
-			},
-			Datapoint: ts.Datapoint{
-				Timestamp: time.Now(),
-				Value:     145.13,
-			},
-		},
-	}
-
-	client := NewClient(NewClientOpts())
-
-	promTS := TSListToProtoWR(tsList)
-	if err := client.Write(promTS); err != nil {
-		log.Fatal(err)
-	}
-}
-
 func (c *client) Write(promWR *prompb.WriteRequest) error {
 	data, err := proto.Marshal(promWR)
 	if err != nil {
@@ -171,24 +143,32 @@ func (c *client) Write(promWR *prompb.WriteRequest) error {
 		return err
 	}
 
+	defer resp.Body.Close()
+
 	if resp.StatusCode != 200 {
-		return fmt.Errorf("expected 200 response code, instead got: %d", resp.StatusCode)
+		bodyBytes, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("unable to read response body: %v", err)
+		}
+
+		body := string(bodyBytes)
+		return fmt.Errorf("expected 200 response code, instead got: %d, %s", resp.StatusCode, body)
 	}
 
 	return nil
 }
 
-// TSListToProtoWR converts a list of timeseries to a Prometheus proto write request
+// TSListToProtoWR converts a list of timeseries to a Prometheus proto write request.
 func TSListToProtoWR(tsList []Timeseries) *prompb.WriteRequest {
 	promTS := make([]*prompb.TimeSeries, len(tsList))
 
 	for i, ts := range tsList {
 		labels := make([]*prompb.Label, len(ts.Tags))
 		for j, tag := range ts.Tags {
-			labels[j] = &prompb.Label{Name: []byte(tag.Name), Value: []byte(tag.Value)}
+			labels[j] = &prompb.Label{Name: tag.Name, Value: tag.Value}
 		}
 
-		sample := []*prompb.Sample{&prompb.Sample{Value: ts.Datapoint.Value, Timestamp: ts.Datapoint.Timestamp.Unix()}}
+		sample := []prompb.Sample{prompb.Sample{Value: ts.Datapoint.Value, Timestamp: ts.Datapoint.Timestamp.Unix()}}
 		promTS[i] = &prompb.TimeSeries{Labels: labels, Samples: sample}
 	}
 
