@@ -9,6 +9,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/prometheus/prometheus v2.5.0+incompatible
 	github.com/stretchr/testify v1.2.2
+	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20190418145605-e7d98fc518a7 // indirect
 	google.golang.org/grpc v1.20.1 // indirect
 )
