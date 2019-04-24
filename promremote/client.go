@@ -39,12 +39,14 @@ const (
 	DefaultRemoteWrite = "http://localhost:7201/api/v1/prom/remote/write"
 
 	defaulHTTPClientTimeout = 30 * time.Second
+	defaultUserAgent        = "promremote-go/1.0.0"
 )
 
 // DefaultConfig represents the default configuration used to construct a client.
 var DefaultConfig = Config{
 	WriteURL:          DefaultRemoteWrite,
 	HTTPClientTimeout: defaulHTTPClientTimeout,
+	UserAgent:         defaultUserAgent,
 }
 
 // Tag are the metric tags.
@@ -88,6 +90,9 @@ type Config struct {
 
 	// If not nil, http client is used instead of constructing one.
 	HTTPClient *http.Client
+
+	// UserAgent is the `User-Agent` header in the request.
+	UserAgent string `yaml:"userAgent"`
 }
 
 // ConfigOption defines a config option that can be used when constructing a client.
@@ -112,6 +117,10 @@ func (c Config) validate() error {
 		return errors.New("remote write URL should not be blank")
 	}
 
+	if c.UserAgent == "" {
+		return errors.New("User-Agent should not be blank")
+	}
+
 	return nil
 }
 
@@ -122,23 +131,31 @@ func WriteURLOption(writeURL string) ConfigOption {
 	}
 }
 
-// HTTPClientTimeoutOption returns the timeout that is set for the client.
+// HTTPClientTimeoutOption sets the timeout that is set for the client.
 func HTTPClientTimeoutOption(httpClientTimeout time.Duration) ConfigOption {
 	return func(c *Config) {
 		c.HTTPClientTimeout = httpClientTimeout
 	}
 }
 
-// HTTPClientOption returns the HTTP client that is set for the client.
+// HTTPClientOption sets the HTTP client that is set for the client.
 func HTTPClientOption(httpClient *http.Client) ConfigOption {
 	return func(c *Config) {
 		c.HTTPClient = httpClient
 	}
 }
 
+// UserAgent sets the `User-Agent` header in the request.
+func UserAgent(userAgent string) ConfigOption {
+	return func(c *Config) {
+		c.UserAgent = userAgent
+	}
+}
+
 type client struct {
 	writeURL   string
 	httpClient *http.Client
+	userAgent  string
 }
 
 // NewClient creates a new remote write coordinator client.
@@ -181,6 +198,9 @@ func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) er
 
 	req.Header.Set("Content-Type", "application/x-protobuf")
 	req.Header.Set("Content-Encoding", "snappy")
+	req.Header.Set("User-Agent", c.userAgent)
+	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
+
 	resp, err := c.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
 		return err
