@@ -21,13 +21,12 @@
 package promremote
 
 import (
+	"context"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"github.com/m3db/m3/src/query/ts"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/snappy"
@@ -70,10 +69,14 @@ func TestPromRemoteClientWrite(t *testing.T) {
 
 	defer testServer.Close()
 
-	opts := NewClientOpts().SetWriteURL(testServer.URL)
-	c := NewClient(opts)
+	cfg := NewConfig(
+		WriteURLOption(testServer.URL),
+	)
 
-	tsList := []Timeseries{
+	c, err := NewClient(cfg)
+	require.NoError(t, err)
+
+	tsList := TSList{
 		{
 			Tags: []Tag{
 				{
@@ -85,14 +88,40 @@ func TestPromRemoteClientWrite(t *testing.T) {
 					Value: "baz",
 				},
 			},
-			Datapoint: ts.Datapoint{
+			Datapoint: Datapoint{
 				Timestamp: now,
 				Value:     1415.92,
 			},
 		},
 	}
 
-	promWR := TSListToProtoWR(tsList)
-	err := c.Write(promWR)
+	err = c.WriteTimeSeries(context.Background(), tsList)
+	require.NoError(t, err)
+}
+
+func TestValidateConfig(t *testing.T) {
+	cfg := NewConfig(
+		HTTPClientTimeoutOption(-1 * time.Second),
+	)
+
+	_, err := NewClient(cfg)
+	require.Error(t, err)
+
+	cfg = NewConfig(
+		WriteURLOption(""),
+	)
+
+	_, err = NewClient(cfg)
+	require.Error(t, err)
+}
+
+func TestProvidedHTTPClient(t *testing.T) {
+	cfg := NewConfig(
+		HTTPClientOption(&http.Client{
+			Timeout: 10 * time.Second,
+		}),
+	)
+
+	_, err := NewClient(cfg)
 	require.NoError(t, err)
 }

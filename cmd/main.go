@@ -21,6 +21,7 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
@@ -28,39 +29,42 @@ import (
 	"strings"
 	"time"
 
-	"github.com/m3db/m3/src/query/ts"
 	"github.com/m3db/prometheus_remote_client_golang/promremote"
 )
 
-var (
-	writeURL    *string
-	tagsListVar tagList
-	dpVar       dp
-)
-
 type tagList []promremote.Tag
-type dp ts.Datapoint
-
-func init() {
-	writeURL = flag.String("u", promremote.DefaultRemoteWrite, "remote write endpoint")
-	flag.Var(&tagsListVar, "t", "tag pair to include in metric. specify as key:value e.g. status_code:200")
-	flag.Var(&dpVar, "d", "datapoint to add. specify as value(float),unixTimestamp(int) e.g. 14.23,1556026059. use `now` instead of timestamp for current time")
-
-	flag.Parse()
-}
+type dp promremote.Datapoint
 
 func main() {
-	tsList := []promremote.Timeseries{
+	var (
+		writeURLFlag string
+		tagsListFlag tagList
+		dpFlag       dp
+	)
+
+	flag.StringVar(&writeURLFlag, "u", promremote.DefaultRemoteWrite, "remote write endpoint")
+	flag.Var(&tagsListFlag, "t", "tag pair to include in metric. specify as key:value e.g. status_code:200")
+	flag.Var(&dpFlag, "d", "datapoint to add. specify as value(float),unixTimestamp(int) e.g. 14.23,1556026059. use `now` instead of timestamp for current time")
+
+	flag.Parse()
+
+	tsList := promremote.TSList{
 		{
-			Tags:      []promremote.Tag(tagsListVar),
-			Datapoint: ts.Datapoint(dpVar),
+			Tags:      []promremote.Tag(tagsListFlag),
+			Datapoint: promremote.Datapoint(dpFlag),
 		},
 	}
 
-	client := promremote.NewClient(promremote.NewClientOpts().SetWriteURL(*writeURL))
+	cfg := promremote.NewConfig(
+		promremote.WriteURLOption(writeURLFlag),
+	)
 
-	promWR := promremote.TSListToProtoWR(tsList)
-	if err := client.Write(promWR); err != nil {
+	client, err := promremote.NewClient(cfg)
+	if err != nil {
+		log.Fatal(fmt.Errorf("unable to construct client: %v", err))
+	}
+
+	if err := client.WriteTimeSeries(context.Background(), tsList); err != nil {
 		log.Fatal(err)
 	}
 }
