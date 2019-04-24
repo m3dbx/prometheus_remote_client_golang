@@ -24,6 +24,7 @@ To use `promremote` as a client library, the client must be constructed manually
 cfg := promremote.NewConfig(
   promremote.WriteURLOption(writeURLFlag),
   promremote.HTTPClientTimeoutOption(60 * time.Second),
+  promremote.UserAgent(userAgent),
 )
 
 client, err := promremote.NewClient(cfg)
