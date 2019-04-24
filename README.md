@@ -26,7 +26,7 @@ and pass in the appropriate structs.
 opts := promremote.NewClientOpts().SetWriteURL("http://localhost:7201/api/v1/prom/remote/write")
 client := promremote.NewClient(opts)
 
-tsList := []Timeseries{
+tsList := []promremote.Timeseries{
 		{
 			Tags: []Tag{
 				{

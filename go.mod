@@ -22,6 +22,7 @@ require (
 	github.com/prometheus/procfs v0.0.0-20190416084830-8368d24ba045 // indirect
 	github.com/prometheus/prometheus v2.5.0+incompatible
 	github.com/sergi/go-diff v1.0.0 // indirect
+	github.com/stretchr/testify v1.2.2
 	github.com/uber-go/atomic v1.3.2 // indirect
 	github.com/uber-go/tally v3.3.8+incompatible // indirect
 	github.com/uber/jaeger-client-go v2.16.0+incompatible // indirect
@@ -29,6 +30,7 @@ require (
 	go.uber.org/atomic v1.3.2 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
 	go.uber.org/zap v1.9.1 // indirect
+	golang.org/x/net v0.0.0-20190311183353-d8887717615a
 	google.golang.org/appengine v1.4.0 // indirect
 	google.golang.org/genproto v0.0.0-20190418145605-e7d98fc518a7 // indirect
 	google.golang.org/grpc v1.20.1 // indirect
