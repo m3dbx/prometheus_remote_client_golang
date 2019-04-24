@@ -113,5 +113,6 @@ func (d *dp) Set(value string) error {
 
 	d.Timestamp = ts
 	d.Value = val
+
 	return nil
 }
