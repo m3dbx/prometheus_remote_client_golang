@@ -64,9 +64,15 @@ func main() {
 		log.Fatal(fmt.Errorf("unable to construct client: %v", err))
 	}
 
+	log.Println("writing datapoint", (&dpFlag).String())
+	log.Println("labelled", (&labelsListFlag).String())
+	log.Println("writing to", writeURLFlag)
+
 	if err := client.WriteTimeSeries(context.Background(), tsList); err != nil {
-		log.Fatal(err)
+		log.Fatal("write error", err)
 	}
+
+	log.Println("write success")
 }
 
 func (t *labelList) String() string {
@@ -94,8 +100,7 @@ func (t *labelList) Set(value string) error {
 }
 
 func (d *dp) String() string {
-
-	return fmt.Sprintf("%v", []string{})
+	return fmt.Sprintf("%v", []string{d.Timestamp.String(), fmt.Sprintf("%v", d.Value)})
 }
 
 func (d *dp) Set(value string) error {
