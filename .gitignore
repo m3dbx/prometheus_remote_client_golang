@@ -1,0 +1,33 @@
+*~
+*.out
+*.test
+*.xml
+*.swp
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+*.cov
+*.html
+*.tmp
+.DS_Store
+test.log
+
+# Vendoring
+vendor/
+
+# Build binaries
+bin/
+
+# Debug binaries
+debug
+debug.test
+
+# Test data
+test-data
+
+# Coverage imports
+coverage_imports.go
+coverage/
+
