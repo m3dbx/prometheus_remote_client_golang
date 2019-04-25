@@ -78,7 +78,7 @@ func TestPromRemoteClientWrite(t *testing.T) {
 
 	tsList := TSList{
 		{
-			Tags: []Tag{
+			Labels: []Label{
 				{
 					Name:  "__name__",
 					Value: "foo_bar",

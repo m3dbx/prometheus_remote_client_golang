@@ -32,25 +32,25 @@ import (
 	"github.com/m3db/prometheus_remote_client_golang/promremote"
 )
 
-type tagList []promremote.Tag
+type labelList []promremote.Label
 type dp promremote.Datapoint
 
 func main() {
 	var (
-		writeURLFlag string
-		tagsListFlag tagList
-		dpFlag       dp
+		writeURLFlag   string
+		labelsListFlag labelList
+		dpFlag         dp
 	)
 
 	flag.StringVar(&writeURLFlag, "u", promremote.DefaultRemoteWrite, "remote write endpoint")
-	flag.Var(&tagsListFlag, "t", "tag pair to include in metric. specify as key:value e.g. status_code:200")
+	flag.Var(&labelsListFlag, "t", "label pair to include in metric. specify as key:value e.g. status_code:200")
 	flag.Var(&dpFlag, "d", "datapoint to add. specify as value(float),unixTimestamp(int) e.g. 14.23,1556026059. use `now` instead of timestamp for current time")
 
 	flag.Parse()
 
 	tsList := promremote.TSList{
 		{
-			Tags:      []promremote.Tag(tagsListFlag),
+			Labels:    []promremote.Label(labelsListFlag),
 			Datapoint: promremote.Datapoint(dpFlag),
 		},
 	}
@@ -69,28 +69,33 @@ func main() {
 	}
 }
 
-func (t *tagList) String() string {
-	return ""
+func (t *labelList) String() string {
+	var labels [][]string
+	for _, v := range []promremote.Label(*t) {
+		labels = append(labels, []string{v.Name, v.Value})
+	}
+	return fmt.Sprintf("%v", labels)
 }
 
-func (t *tagList) Set(value string) error {
-	tagPair := strings.Split(value, ":")
-	if len(tagPair) != 2 {
-		return fmt.Errorf("incorrect number of arguments to '-t': %d", len(tagPair))
+func (t *labelList) Set(value string) error {
+	labelPair := strings.Split(value, ":")
+	if len(labelPair) != 2 {
+		return fmt.Errorf("incorrect number of arguments to '-t': %d", len(labelPair))
 	}
 
-	tag := promremote.Tag{
-		Name:  tagPair[0],
-		Value: tagPair[1],
+	label := promremote.Label{
+		Name:  labelPair[0],
+		Value: labelPair[1],
 	}
 
-	*t = append(*t, tag)
+	*t = append(*t, label)
 
 	return nil
 }
 
 func (d *dp) String() string {
-	return ""
+
+	return fmt.Sprintf("%v", []string{})
 }
 
 func (d *dp) Set(value string) error {
@@ -99,20 +104,20 @@ func (d *dp) Set(value string) error {
 		return fmt.Errorf("incorrect number of arguments to '-d': %d", len(dp))
 	}
 
-	val, err := strconv.ParseFloat(dp[0], 64)
-	if err != nil {
-		return fmt.Errorf("unable to parse value as float64: %s", dp[0])
-	}
-
 	var ts time.Time
-	if strings.ToLower(dp[1]) == "now" {
+	if strings.ToLower(dp[0]) == "now" {
 		ts = time.Now()
 	} else {
-		i, err := strconv.Atoi(dp[1])
+		i, err := strconv.Atoi(dp[0])
 		if err != nil {
 			return fmt.Errorf("unable to parse timestamp: %s", dp[1])
 		}
 		ts = time.Unix(int64(i), 0)
+	}
+
+	val, err := strconv.ParseFloat(dp[1], 64)
+	if err != nil {
+		return fmt.Errorf("unable to parse value as float64: %s", dp[0])
 	}
 
 	d.Timestamp = ts

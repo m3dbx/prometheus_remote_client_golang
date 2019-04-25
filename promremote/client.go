@@ -49,15 +49,15 @@ var DefaultConfig = Config{
 	UserAgent:         defaultUserAgent,
 }
 
-// Tag are the metric tags.
-type Tag struct {
+// Label is a metric label.
+type Label struct {
 	Name  string
 	Value string
 }
 
-// TimeSeries are made of tags and a datapoint.
+// TimeSeries are made of labels and a datapoint.
 type TimeSeries struct {
-	Tags      []Tag
+	Labels    []Label
 	Datapoint Datapoint
 }
 
@@ -226,9 +226,9 @@ func (t TSList) toPromWriteRequest() *prompb.WriteRequest {
 	promTS := make([]*prompb.TimeSeries, len(t))
 
 	for i, ts := range t {
-		labels := make([]*prompb.Label, len(ts.Tags))
-		for j, tag := range ts.Tags {
-			labels[j] = &prompb.Label{Name: tag.Name, Value: tag.Value}
+		labels := make([]*prompb.Label, len(ts.Labels))
+		for j, label := range ts.Labels {
+			labels[j] = &prompb.Label{Name: label.Name, Value: label.Value}
 		}
 
 		sample := []prompb.Sample{prompb.Sample{Value: ts.Datapoint.Value, Timestamp: ts.Datapoint.Timestamp.Unix()}}

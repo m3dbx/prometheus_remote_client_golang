@@ -8,7 +8,7 @@
 
 ## Use
 
-`promremote` is used to send metrics to a Prometheus remote write endpoint such as that found in
+`promremote` is used to send metrics to a Prometheus remote write endpoint such as supported by 
 [m3coordinator](http://m3db.github.io/m3/overview/components/#m3-coordinator). It can be pulled into
 an existing codebase as a client library or used as a cli tool (`cmd/main.go`) for ad hoc testing
 purposes.
@@ -35,7 +35,7 @@ if err != nil {
 
 tsList := promremote.TSList{
 		{
-			Tags: []Tag{
+			Labels: []promremote.Label{
 				{
 					Name:  "__name__",
 					Value: "foo_bar",
@@ -45,7 +45,7 @@ tsList := promremote.TSList{
 					Value: "baz",
 				},
 			},
-			Datapoint: ts.Datapoint{
+			Datapoint: promremote.Datapoint{
 				Timestamp: time.Now(),
 				Value:     1415.92,
 			},
@@ -60,13 +60,13 @@ if err := client.WriteTimeSeries(tsList); err != nil {
 ### CLI
 
 If one wants to use `promremote` as a CLI, he or she can utilize the tool located in the `cmd/`
-directory. The tool takes in a series of tags and a datapoint then writes them to the Prometheus
-remote write endpoint within `m3coordinator`. Below is an example showing a metric with two tags
-(`__name__:foo_bar` and `biz:baz`) and a datapoint (val:`1415.92` timestamp:`now`).
+directory. The tool takes in a series of labels and a datapoint then writes them to a Prometheus
+remote write endpoint. Below is an example showing a metric with two labels
+(`__name__:foo_bar` and `biz:baz`) and a datapoint (timestamp:`now` value:`1415.92`).
 
 **Note**: One can either specify a Unix timestamp (e.g. `1556026725`) or the keyword `now` as the
-second parameter in the `-d` flag.
+first parameter in the `-d` flag.
 
 ```bash
-go run cmd/main.go -t=__name__:foo_bar -t=biz:baz -d=1415.92,now
+go run cmd/main.go -t=__name__:foo_bar -t=biz:baz -d=now,1415.92
 ```
