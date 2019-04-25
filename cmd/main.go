@@ -44,7 +44,7 @@ func main() {
 
 	flag.StringVar(&writeURLFlag, "u", promremote.DefaultRemoteWrite, "remote write endpoint")
 	flag.Var(&labelsListFlag, "t", "label pair to include in metric. specify as key:value e.g. status_code:200")
-	flag.Var(&dpFlag, "d", "datapoint to add. specify as value(float),unixTimestamp(int) e.g. 14.23,1556026059. use `now` instead of timestamp for current time")
+	flag.Var(&dpFlag, "d", "datapoint to add. specify as unixTimestamp(int),value(float) e.g. 1556026059,14.23. use `now` instead of timestamp for current time")
 
 	flag.Parse()
 
