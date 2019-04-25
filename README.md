@@ -33,8 +33,8 @@ if err != nil {
 }
 
 
-tsList := promremote.TSList{
-		{
+timeSeriesList := []promremote.TimeSeries{
+		promremote.TimeSeries{
 			Labels: []promremote.Label{
 				{
 					Name:  "__name__",
@@ -52,7 +52,7 @@ tsList := promremote.TSList{
 		},
 	}
 
-if err := client.WriteTimeSeries(tsList); err != nil {
+if err := client.WriteTimeSeries(timeSeriesList); err != nil {
 	log.Fatal(err)
 }
 ```
