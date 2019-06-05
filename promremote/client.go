@@ -231,7 +231,7 @@ func (t TSList) toPromWriteRequest() *prompb.WriteRequest {
 			labels[j] = &prompb.Label{Name: label.Name, Value: label.Value}
 		}
 
-		sample := []prompb.Sample{prompb.Sample{Value: ts.Datapoint.Value, Timestamp: ts.Datapoint.Timestamp.Unix()}}
+		sample := []*prompb.Sample{&prompb.Sample{Value: ts.Datapoint.Value, Timestamp: ts.Datapoint.Timestamp.Unix()}}
 		promTS[i] = &prompb.TimeSeries{Labels: labels, Samples: sample}
 	}
 
