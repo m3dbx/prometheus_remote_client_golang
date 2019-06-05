@@ -68,5 +68,5 @@ remote write endpoint. Below is an example showing a metric with two labels
 first parameter in the `-d` flag.
 
 ```bash
-go run cmd/main.go -t=__name__:foo_bar -t=biz:baz -d=now,1415.92
+go run cmd/promremotecli/main.go -t=__name__:foo_bar -t=biz:baz -d=now,1415.92
 ```
