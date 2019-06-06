@@ -25,7 +25,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"log"
+	stdlog "log"
 	"os"
 	"strconv"
 	"strings"
@@ -39,6 +39,7 @@ type dp promremote.Datapoint
 
 func main() {
 	var (
+		log = stdlog.New(os.Stderr, "promremotecli_log ", stdlog.LstdFlags)
 		writeURLFlag   string
 		labelsListFlag labelList
 		dpFlag         dp
@@ -61,6 +62,8 @@ func main() {
 		promremote.WriteURLOption(writeURLFlag),
 	)
 
+	
+
 	client, err := promremote.NewClient(cfg)
 	if err != nil {
 		log.Fatal(fmt.Errorf("unable to construct client: %v", err))
@@ -71,16 +74,17 @@ func main() {
 	log.Println("writing to", writeURLFlag)
 
 	result, writeErr := client.WriteTimeSeries(context.Background(), tsList)
-	if writeErr != nil {
+	if err := error(writeErr); err != nil {
 		json.NewEncoder(os.Stdout).Encode(struct{
 			Success bool `json:"success"`
 			Error string `json:"error"`
 			StatusCode int `json:"statusCode"`
 		}{
 			Success: false,
-			Error: writeErr.Error(),
+			Error: err.Error(),
 			StatusCode: writeErr.StatusCode(),
 		})
+		os.Stdout.Sync()
 		
 		log.Fatal("write error", err)
 	}
@@ -92,6 +96,7 @@ func main() {
 		Success: true,
 		StatusCode: result.StatusCode,
 	})
+	os.Stdout.Sync()
 
 	log.Println("write success")
 }
