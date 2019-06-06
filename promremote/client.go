@@ -74,10 +74,22 @@ type Datapoint struct {
 // such as the one in m3coordinator.
 type Client interface {
 	// WriteProto writes the Prom proto WriteRequest to the specified endpoint.
-	WriteProto(context.Context, *prompb.WriteRequest) error
+	WriteProto(context.Context, *prompb.WriteRequest) (WriteResult, WriteError)
 
 	// WriteTimeSeries converts the []TimeSeries to Protobuf then writes it to the specified endpoint.
-	WriteTimeSeries(context.Context, TSList) error
+	WriteTimeSeries(context.Context, TSList) (WriteResult, WriteError)
+}
+
+// WriteResult returns the successful HTTP status code.
+type WriteResult struct {
+	StatusCode int
+}
+
+// WriteError is an error that can also return the HTTP status code
+// if the response is what caused an error.
+type WriteError interface {
+	error
+	StatusCode() int
 }
 
 // Config defines the configuration used to construct a client.
@@ -178,14 +190,15 @@ func NewClient(c Config) (Client, error) {
 	}, nil
 }
 
-func (c *client) WriteTimeSeries(ctx context.Context, seriesList TSList) error {
+func (c *client) WriteTimeSeries(ctx context.Context, seriesList TSList) (WriteResult, WriteError) {
 	return c.WriteProto(ctx, seriesList.toPromWriteRequest())
 }
 
-func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) error {
+func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) (WriteResult, WriteError) {
+	var result WriteResult
 	data, err := proto.Marshal(promWR)
 	if err != nil {
-		return fmt.Errorf("unable to marshal protobuf: %v", err)
+		return result, writeError{err: fmt.Errorf("unable to marshal protobuf: %v", err)}
 	}
 
 	encoded := snappy.Encode(nil, data)
@@ -193,7 +206,7 @@ func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) er
 	body := bytes.NewReader(encoded)
 	req, err := http.NewRequest("POST", c.writeURL, body)
 	if err != nil {
-		return err
+		return result, writeError{err: err}
 	}
 
 	req.Header.Set("Content-Type", "application/x-protobuf")
@@ -203,22 +216,30 @@ func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) er
 
 	resp, err := c.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
-		return err
+		return result, writeError{err: err}
 	}
+
+	result.StatusCode = resp.StatusCode
 
 	defer resp.Body.Close()
 
-	if resp.StatusCode != 200 {
-		bodyBytes, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return fmt.Errorf("unable to read response body: %v", err)
+	if result.StatusCode/100 != 2 {
+		writeErr := writeError{
+			err: fmt.Errorf("expected HTTP 200 status code: actual=%d", resp.StatusCode), 
+			code: result.StatusCode,
 		}
 
-		body := string(bodyBytes)
-		return fmt.Errorf("expected 200 response code, instead got: %d, %s", resp.StatusCode, body)
+		body, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			writeErr.err = fmt.Errorf("%v, body_read_error=%s", writeErr.err, err)
+			return result, writeErr
+		}
+
+		writeErr.err = fmt.Errorf("%v, body=%s", writeErr.err, body)
+		return result, writeErr
 	}
 
-	return nil
+	return result, nil
 }
 
 // toPromWriteRequest converts a list of timeseries to a Prometheus proto write request.
@@ -238,4 +259,19 @@ func (t TSList) toPromWriteRequest() *prompb.WriteRequest {
 	return &prompb.WriteRequest{
 		Timeseries: promTS,
 	}
+}
+
+type writeError struct {
+	err error
+	code int
+}
+
+func (e writeError) Error() string {
+	return e.err.Error()
+}
+
+// StatusCode returns the HTTP status code of the error if error
+// was caused by the response, otherwise it will be just zero.
+func (e writeError) StatusCode() int {
+	return e.code
 }

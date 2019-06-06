@@ -22,9 +22,11 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -68,9 +70,28 @@ func main() {
 	log.Println("labelled", (&labelsListFlag).String())
 	log.Println("writing to", writeURLFlag)
 
-	if err := client.WriteTimeSeries(context.Background(), tsList); err != nil {
+	result, writeErr := client.WriteTimeSeries(context.Background(), tsList)
+	if writeErr != nil {
+		json.NewEncoder(os.Stdout).Encode(struct{
+			Success bool `json:"success"`
+			Error string `json:"error"`
+			StatusCode int `json:"statusCode"`
+		}{
+			Success: false,
+			Error: writeErr.Error(),
+			StatusCode: writeErr.StatusCode(),
+		})
+		
 		log.Fatal("write error", err)
 	}
+
+	json.NewEncoder(os.Stdout).Encode(struct{
+		Success bool `json:"success"`
+		StatusCode int `json:"statusCode"`
+	}{
+		Success: true,
+		StatusCode: result.StatusCode,
+	})
 
 	log.Println("write success")
 }

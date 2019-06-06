@@ -95,8 +95,48 @@ func TestPromRemoteClientWrite(t *testing.T) {
 		},
 	}
 
-	err = c.WriteTimeSeries(context.Background(), tsList)
+	r, err := c.WriteTimeSeries(context.Background(), tsList)
 	require.NoError(t, err)
+	require.Equal(t, http.StatusOK, r.StatusCode)
+}
+
+func TestPromRemoteClientWriteNotHTTPOK(t *testing.T) {
+	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+
+	defer testServer.Close()
+
+	cfg := NewConfig(
+		WriteURLOption(testServer.URL),
+	)
+
+	c, err := NewClient(cfg)
+	require.NoError(t, err)
+
+	tsList := TSList{
+		{
+			Labels: []Label{
+				{
+					Name:  "__name__",
+					Value: "foo_bar",
+				},
+				{
+					Name:  "biz",
+					Value: "baz",
+				},
+			},
+			Datapoint: Datapoint{
+				Timestamp: now,
+				Value:     1415.92,
+			},
+		},
+	}
+
+	r, writeErr := c.WriteTimeSeries(context.Background(), tsList)
+	require.Error(t, writeErr)
+	require.Equal(t, http.StatusBadRequest, writeErr.StatusCode())
+	require.Equal(t, http.StatusBadRequest, r.StatusCode)
 }
 
 func TestValidateConfig(t *testing.T) {
