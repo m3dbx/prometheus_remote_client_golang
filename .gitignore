@@ -31,3 +31,6 @@ test-data
 coverage_imports.go
 coverage/
 
+# Binaries
+promremotecli
+
