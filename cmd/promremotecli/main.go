@@ -82,7 +82,7 @@ func main() {
 		log.Println("with headers", headerListFlag.String())
 		headers = make(map[string]string, len(headerListFlag))
 		for _, header := range headerListFlag {
-			headers[header.name] = headers[header.value]
+			headers[header.name] = header.value
 		}
 	}
 	log.Println("writing to", writeURLFlag)
