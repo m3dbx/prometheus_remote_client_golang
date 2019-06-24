@@ -40,9 +40,19 @@ var (
 )
 
 func TestPromRemoteClientWrite(t *testing.T) {
+	overrideUserAgent := "overrideUserAgent"
+	customHeaders := map[string]string{
+		"M3-Metrics-Type": "unaggregated",
+		"User-Agent":      overrideUserAgent,
+	}
+
 	testServer := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "snappy", r.Header["Content-Encoding"][0])
-		assert.Equal(t, "application/x-protobuf", r.Header["Content-Type"][0])
+		assert.Equal(t, "snappy", r.Header.Get("Content-Encoding"))
+		assert.Equal(t, "application/x-protobuf", r.Header.Get("Content-Type"))
+		assert.Equal(t, overrideUserAgent, r.Header.Get("User-Agent"))
+		for k, v := range customHeaders {
+			assert.Equal(t, v, r.Header.Get(k))
+		}
 
 		defer r.Body.Close()
 
@@ -95,7 +105,8 @@ func TestPromRemoteClientWrite(t *testing.T) {
 		},
 	}
 
-	r, err := c.WriteTimeSeries(context.Background(), tsList)
+	r, err := c.WriteTimeSeries(context.Background(), tsList,
+		WriteOptions{Headers: customHeaders})
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, r.StatusCode)
 }
@@ -133,7 +144,8 @@ func TestPromRemoteClientWriteNotHTTPOK(t *testing.T) {
 		},
 	}
 
-	r, writeErr := c.WriteTimeSeries(context.Background(), tsList)
+	r, writeErr := c.WriteTimeSeries(context.Background(), tsList,
+		WriteOptions{})
 	require.Error(t, writeErr)
 	require.Equal(t, http.StatusBadRequest, writeErr.StatusCode())
 	require.Equal(t, http.StatusBadRequest, r.StatusCode)

@@ -74,10 +74,24 @@ type Datapoint struct {
 // such as the one in m3coordinator.
 type Client interface {
 	// WriteProto writes the Prom proto WriteRequest to the specified endpoint.
-	WriteProto(context.Context, *prompb.WriteRequest) (WriteResult, WriteError)
+	WriteProto(
+		ctx context.Context,
+		req *prompb.WriteRequest,
+		opts WriteOptions,
+	) (WriteResult, WriteError)
 
 	// WriteTimeSeries converts the []TimeSeries to Protobuf then writes it to the specified endpoint.
-	WriteTimeSeries(context.Context, TSList) (WriteResult, WriteError)
+	WriteTimeSeries(
+		ctx context.Context,
+		ts TSList,
+		opts WriteOptions,
+	) (WriteResult, WriteError)
+}
+
+// WriteOptions specifies additional write options.
+type WriteOptions struct {
+	// Headers to append or override the outgoing headers.
+	Headers map[string]string
 }
 
 // WriteResult returns the successful HTTP status code.
@@ -190,11 +204,19 @@ func NewClient(c Config) (Client, error) {
 	}, nil
 }
 
-func (c *client) WriteTimeSeries(ctx context.Context, seriesList TSList) (WriteResult, WriteError) {
-	return c.WriteProto(ctx, seriesList.toPromWriteRequest())
+func (c *client) WriteTimeSeries(
+	ctx context.Context,
+	seriesList TSList,
+	opts WriteOptions,
+) (WriteResult, WriteError) {
+	return c.WriteProto(ctx, seriesList.toPromWriteRequest(), opts)
 }
 
-func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) (WriteResult, WriteError) {
+func (c *client) WriteProto(
+	ctx context.Context,
+	promWR *prompb.WriteRequest,
+	opts WriteOptions,
+) (WriteResult, WriteError) {
 	var result WriteResult
 	data, err := proto.Marshal(promWR)
 	if err != nil {
@@ -213,6 +235,11 @@ func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) (W
 	req.Header.Set("Content-Encoding", "snappy")
 	req.Header.Set("User-Agent", c.userAgent)
 	req.Header.Set("X-Prometheus-Remote-Write-Version", "0.1.0")
+	if opts.Headers != nil {
+		for k, v := range opts.Headers {
+			req.Header.Set(k, v)
+		}
+	}
 
 	resp, err := c.httpClient.Do(req.WithContext(ctx))
 	if err != nil {
@@ -225,7 +252,7 @@ func (c *client) WriteProto(ctx context.Context, promWR *prompb.WriteRequest) (W
 
 	if result.StatusCode/100 != 2 {
 		writeErr := writeError{
-			err: fmt.Errorf("expected HTTP 200 status code: actual=%d", resp.StatusCode), 
+			err:  fmt.Errorf("expected HTTP 200 status code: actual=%d", resp.StatusCode),
 			code: result.StatusCode,
 		}
 
@@ -262,7 +289,7 @@ func (t TSList) toPromWriteRequest() *prompb.WriteRequest {
 }
 
 type writeError struct {
-	err error
+	err  error
 	code int
 }
 
