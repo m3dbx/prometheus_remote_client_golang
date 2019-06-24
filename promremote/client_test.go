@@ -36,7 +36,8 @@ import (
 )
 
 var (
-	now = time.Now()
+	now       = time.Now()
+	nowMillis = now.UnixNano() / int64(time.Millisecond)
 )
 
 func TestPromRemoteClientWrite(t *testing.T) {
@@ -74,7 +75,7 @@ func TestPromRemoteClientWrite(t *testing.T) {
 		assert.Equal(t, "biz", newWR.Timeseries[0].Labels[1].Name)
 		assert.Equal(t, "baz", newWR.Timeseries[0].Labels[1].Value)
 		assert.Equal(t, 1415.92, newWR.Timeseries[0].Samples[0].Value)
-		assert.Equal(t, now.Unix(), newWR.Timeseries[0].Samples[0].Timestamp)
+		assert.Equal(t, nowMillis, newWR.Timeseries[0].Samples[0].Timestamp)
 	}))
 
 	defer testServer.Close()
