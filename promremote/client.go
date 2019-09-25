@@ -271,20 +271,20 @@ func (c *client) WriteProto(
 
 // toPromWriteRequest converts a list of timeseries to a Prometheus proto write request.
 func (t TSList) toPromWriteRequest() *prompb.WriteRequest {
-	promTS := make([]*prompb.TimeSeries, len(t))
+	promTS := make([]prompb.TimeSeries, len(t))
 
 	for i, ts := range t {
-		labels := make([]*prompb.Label, len(ts.Labels))
+		labels := make([]prompb.Label, len(ts.Labels))
 		for j, label := range ts.Labels {
-			labels[j] = &prompb.Label{Name: label.Name, Value: label.Value}
+			labels[j] = prompb.Label{Name: label.Name, Value: label.Value}
 		}
 
-		sample := []*prompb.Sample{&prompb.Sample{
+		sample := []prompb.Sample{prompb.Sample{
 			// Timestamp is int milliseconds for remote write.
 			Timestamp: ts.Datapoint.Timestamp.UnixNano() / int64(time.Millisecond),
 			Value:     ts.Datapoint.Value,
 		}}
-		promTS[i] = &prompb.TimeSeries{Labels: labels, Samples: sample}
+		promTS[i] = prompb.TimeSeries{Labels: labels, Samples: sample}
 	}
 
 	return &prompb.WriteRequest{
