@@ -45,17 +45,19 @@ type header struct {
 
 func main() {
 	var (
-		log            = stdlog.New(os.Stderr, "promremotecli_log ", stdlog.LstdFlags)
-		writeURLFlag   string
-		labelsListFlag labelList
-		headerListFlag headerList
-		dpFlag         dp
+		log                    = stdlog.New(os.Stderr, "promremotecli_log ", stdlog.LstdFlags)
+		writeURLFlag           string
+		labelsListFlag         labelList
+		headerListFlag         headerList
+		dpFlag                 dp
+		insecureSkipVerifyFlag bool
 	)
 
 	flag.StringVar(&writeURLFlag, "u", promremote.DefaultRemoteWrite, "remote write endpoint")
 	flag.Var(&labelsListFlag, "t", "label pair to include in metric. specify as key:value e.g. status_code:200")
 	flag.Var(&headerListFlag, "h", "headers to set in the request, e.g. 'User-Agent: foo'")
 	flag.Var(&dpFlag, "d", "datapoint to add. specify as unixTimestamp(int),value(float) e.g. 1556026059,14.23. use `now` instead of timestamp for current time")
+	flag.BoolVar(&insecureSkipVerifyFlag, "i", promremote.DefaultInsecureSkipVerify, "skip verification of ssl certificates")
 
 	flag.Parse()
 
@@ -68,6 +70,7 @@ func main() {
 
 	cfg := promremote.NewConfig(
 		promremote.WriteURLOption(writeURLFlag),
+		promremote.WriteInsecureSkipVerify(insecureSkipVerifyFlag),
 	)
 
 	client, err := promremote.NewClient(cfg)
