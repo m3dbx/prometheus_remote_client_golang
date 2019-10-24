@@ -23,6 +23,7 @@ package promremote
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -38,15 +39,19 @@ const (
 	// DefaultRemoteWrite is the default Prom remote write endpoint in m3coordinator.
 	DefaultRemoteWrite = "http://localhost:7201/api/v1/prom/remote/write"
 
+	// DefaultInsecureSkipVerify is the default value is the default value used for skipping ssl certificate verification.
+	DefaultInsecureSkipVerify = false
+
 	defaulHTTPClientTimeout = 30 * time.Second
 	defaultUserAgent        = "promremote-go/1.0.0"
 )
 
 // DefaultConfig represents the default configuration used to construct a client.
 var DefaultConfig = Config{
-	WriteURL:          DefaultRemoteWrite,
-	HTTPClientTimeout: defaulHTTPClientTimeout,
-	UserAgent:         defaultUserAgent,
+	WriteURL:           DefaultRemoteWrite,
+	HTTPClientTimeout:  defaulHTTPClientTimeout,
+	UserAgent:          defaultUserAgent,
+	InsecureSkipVerify: DefaultInsecureSkipVerify,
 }
 
 // Label is a metric label.
@@ -119,6 +124,9 @@ type Config struct {
 
 	// UserAgent is the `User-Agent` header in the request.
 	UserAgent string `yaml:"userAgent"`
+
+	// InsecureSkipVerify can be set to true in order to allow invalid SSL certificates to be used.
+	InsecureSkipVerify bool `yaml:"insecureSkipVerify"`
 }
 
 // ConfigOption defines a config option that can be used when constructing a client.
@@ -148,6 +156,12 @@ func (c Config) validate() error {
 	}
 
 	return nil
+}
+
+func WriteInsecureSkipVerify(insecureSkipVerify bool) ConfigOption {
+	return func(c *Config) {
+		c.InsecureSkipVerify = insecureSkipVerify
+	}
 }
 
 // WriteURLOption sets the URL which the client uses to write to m3coordinator.
@@ -190,8 +204,13 @@ func NewClient(c Config) (Client, error) {
 		return nil, err
 	}
 
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: c.InsecureSkipVerify},
+	}
+
 	httpClient := &http.Client{
-		Timeout: c.HTTPClientTimeout,
+		Timeout:   c.HTTPClientTimeout,
+		Transport: tr,
 	}
 
 	if c.HTTPClient != nil {
