@@ -55,9 +55,19 @@ type Label struct {
 	Value string
 }
 
+type Labels []Label
+
+func (l Labels) Strs() []string {
+	strs := make([]string, len(l))
+	for i, label := range l {
+		strs[i] = fmt.Sprintf("%s=%s", label.Name, label.Value)
+	}
+	return strs
+}
+
 // TimeSeries are made of labels and a datapoint.
 type TimeSeries struct {
-	Labels    []Label
+	Labels    Labels
 	Datapoint Datapoint
 }
 
@@ -279,7 +289,7 @@ func (t TSList) toPromWriteRequest() *prompb.WriteRequest {
 			labels[j] = prompb.Label{Name: label.Name, Value: label.Value}
 		}
 
-		sample := []prompb.Sample{prompb.Sample{
+		sample := []prompb.Sample{{
 			// Timestamp is int milliseconds for remote write.
 			Timestamp: ts.Datapoint.Timestamp.UnixNano() / int64(time.Millisecond),
 			Value:     ts.Datapoint.Value,
